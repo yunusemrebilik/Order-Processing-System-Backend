@@ -1,0 +1,73 @@
+using ECommerce.Api.Middleware;
+using ECommerce.Application;
+using ECommerce.Infrastructure;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ── Serilog ──────────────────────────────────────────────────────────────
+builder.Host.UseSerilog((context, loggerConfig) =>
+    loggerConfig.ReadFrom.Configuration(context.Configuration));
+
+// ── Services ─────────────────────────────────────────────────────────────
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddControllers();
+
+// ── Swagger ──────────────────────────────────────────────────────────────
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "ECommerce Order Processing API",
+        Version = "v1",
+        Description = "A showcase ASP.NET Core backend demonstrating PostgreSQL, MongoDB, Redis, and RabbitMQ integration."
+    });
+
+    // JWT Bearer auth in Swagger UI
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter your JWT token"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+var app = builder.Build();
+
+// ── Middleware Pipeline ──────────────────────────────────────────────────
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseSerilogRequestLogging();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHealthChecks("/health");
+
+app.Run();
