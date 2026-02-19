@@ -1,17 +1,13 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using ECommerce.Application.Common.Interfaces;
 using ECommerce.Domain.Entities;
 using ECommerce.Infrastructure.Settings;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ECommerce.Infrastructure.Services;
-
-public interface IJwtService
-{
-    string GenerateToken(User user);
-}
 
 public class JwtService : IJwtService
 {

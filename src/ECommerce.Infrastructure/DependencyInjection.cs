@@ -1,5 +1,7 @@
 using System.Text;
+using ECommerce.Application.Common.Interfaces;
 using ECommerce.Infrastructure.Data;
+using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
 using ECommerce.Infrastructure.Settings;
 using MassTransit;
@@ -27,6 +29,12 @@ public static class DependencyInjection
                 npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
             )
         );
+
+        // Repositories
+        services.AddScoped<IUserRepository, UserRepository>();
+
+        // Services
+        services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
 
         // MongoDB
         services.Configure<MongoDbSettings>(

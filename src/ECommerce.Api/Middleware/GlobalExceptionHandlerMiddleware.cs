@@ -27,8 +27,14 @@ public class GlobalExceptionHandlerMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred. TraceId: {TraceId}",
-                context.TraceIdentifier);
+            var isExpected = ex is ArgumentException or KeyNotFoundException or UnauthorizedAccessException;
+
+            if (isExpected)
+                _logger.LogWarning(ex, "Request failed with expected exception. TraceId: {TraceId}",
+                    context.TraceIdentifier);
+            else
+                _logger.LogError(ex, "An unhandled exception occurred. TraceId: {TraceId}",
+                    context.TraceIdentifier);
 
             await HandleExceptionAsync(context, ex);
         }
