@@ -1,3 +1,4 @@
+using ECommerce.Application.Common.Events;
 using ECommerce.Application.Common.Interfaces;
 using ECommerce.Domain.Entities;
 using MediatR;
@@ -24,15 +25,18 @@ public class CheckoutCommandHandler : IRequestHandler<CheckoutCommand, CheckoutR
 {
     private readonly ICartService _cartService;
     private readonly IOrderRepository _orderRepository;
+    private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<CheckoutCommandHandler> _logger;
 
     public CheckoutCommandHandler(
         ICartService cartService,
         IOrderRepository orderRepository,
+        IEventPublisher eventPublisher,
         ILogger<CheckoutCommandHandler> logger)
     {
         _cartService = cartService;
         _orderRepository = orderRepository;
+        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -64,8 +68,24 @@ public class CheckoutCommandHandler : IRequestHandler<CheckoutCommand, CheckoutR
         // Clear the cart after successful order creation
         await _cartService.ClearCartAsync(request.UserId, cancellationToken);
 
+        // Publish OrderCreated event for async processing (stock validation)
+        await _eventPublisher.PublishAsync(new OrderCreatedEvent
+        {
+            OrderId = order.Id,
+            UserId = order.UserId,
+            TotalAmount = order.TotalAmount,
+            CreatedAt = order.CreatedAt,
+            Items = order.Items.Select(i => new OrderCreatedEventItem
+            {
+                ProductId = i.ProductId,
+                ProductName = i.ProductName,
+                Quantity = i.Quantity,
+                UnitPrice = i.UnitPrice
+            }).ToList()
+        }, cancellationToken);
+
         _logger.LogInformation(
-            "Order created from cart: {OrderId}, {ItemCount} items, total: {Total}",
+            "Order created and event published: {OrderId}, {ItemCount} items, total: {Total}",
             order.Id, order.Items.Count, order.TotalAmount);
 
         return new CheckoutResponse

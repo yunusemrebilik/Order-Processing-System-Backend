@@ -76,6 +76,9 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var productRepo = scope.ServiceProvider.GetRequiredService<ECommerce.Application.Common.Interfaces.IProductRepository>();
     await ECommerce.Infrastructure.Data.MongoDbSeeder.SeedAsync(productRepo);
+
+    var stockRepo = scope.ServiceProvider.GetRequiredService<ECommerce.Application.Common.Interfaces.IStockRepository>();
+    await ECommerce.Infrastructure.Data.StockSeeder.SeedAsync(productRepo, stockRepo);
 }
 
 app.Run();

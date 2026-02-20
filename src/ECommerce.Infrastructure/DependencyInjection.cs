@@ -21,7 +21,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        Action<IBusRegistrationConfigurator>? configureBus = null,
+        bool includeWebAuth = true)
     {
         // PostgreSQL + EF Core
         services.AddDbContext<AppDbContext>(options =>
@@ -35,9 +37,11 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IStockRepository, StockRepository>();
 
         // Services
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 
         // MongoDB
         services.Configure<MongoDbSettings>(
@@ -61,6 +65,9 @@ public static class DependencyInjection
         {
             bus.SetKebabCaseEndpointNameFormatter();
 
+            // Allow callers (e.g., Worker) to register consumers
+            configureBus?.Invoke(bus);
+
             bus.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(configuration.GetConnectionString("RabbitMQ"));
@@ -68,43 +75,46 @@ public static class DependencyInjection
             });
         });
 
-        // JWT Authentication
-        var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()!;
-        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
-        services.AddScoped<IJwtService, JwtService>();
+        if (includeWebAuth)
+        {
+            // JWT Authentication
+            var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()!;
+            services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+            services.AddScoped<IJwtService, JwtService>();
 
-        services.AddAuthentication("Bearer")
-            .AddJwtBearer("Bearer", options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
+            services.AddAuthentication("Bearer")
+                .AddJwtBearer("Bearer", options =>
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings.Issuer,
-                    ValidAudience = jwtSettings.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
-                };
-            });
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = jwtSettings.Issuer,
+                        ValidAudience = jwtSettings.Audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+                    };
+                });
 
-        services.AddAuthorizationBuilder()
-            .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
-            .AddPolicy("CustomerOnly", policy => policy.RequireRole("Customer"));
+            services.AddAuthorizationBuilder()
+                .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+                .AddPolicy("CustomerOnly", policy => policy.RequireRole("Customer"));
 
-        // Health Checks
-        var mongoConnectionString = configuration.GetConnectionString("MongoDB")!;
-        var rabbitConnectionString = configuration.GetConnectionString("RabbitMQ")!;
-        services.AddHealthChecks()
-            .AddNpgSql(configuration.GetConnectionString("PostgreSQL")!, name: "postgresql")
-            .AddMongoDb(sp => new MongoDB.Driver.MongoClient(mongoConnectionString), name: "mongodb")
-            .AddRedis(configuration.GetConnectionString("Redis")!, name: "redis")
-            .AddRabbitMQ(sp =>
-            {
-                var factory = new RabbitMQ.Client.ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
-                return factory.CreateConnectionAsync().GetAwaiter().GetResult();
-            }, name: "rabbitmq");
+            // Health Checks
+            var mongoConnectionString = configuration.GetConnectionString("MongoDB")!;
+            var rabbitConnectionString = configuration.GetConnectionString("RabbitMQ")!;
+            services.AddHealthChecks()
+                .AddNpgSql(configuration.GetConnectionString("PostgreSQL")!, name: "postgresql")
+                .AddMongoDb(sp => new MongoDB.Driver.MongoClient(mongoConnectionString), name: "mongodb")
+                .AddRedis(configuration.GetConnectionString("Redis")!, name: "redis")
+                .AddRabbitMQ(sp =>
+                {
+                    var factory = new RabbitMQ.Client.ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
+                    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+                }, name: "rabbitmq");
+        }
 
         return services;
     }
