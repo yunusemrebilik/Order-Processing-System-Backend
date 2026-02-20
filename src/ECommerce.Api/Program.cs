@@ -70,4 +70,12 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
+// ── Seed Data (Development only) ────────────────────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var productRepo = scope.ServiceProvider.GetRequiredService<ECommerce.Application.Common.Interfaces.IProductRepository>();
+    await ECommerce.Infrastructure.Data.MongoDbSeeder.SeedAsync(productRepo);
+}
+
 app.Run();
