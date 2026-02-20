@@ -34,6 +34,7 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
 
         // Services
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
@@ -53,6 +54,7 @@ public static class DependencyInjection
         services.AddSingleton<IConnectionMultiplexer>(_ =>
             ConnectionMultiplexer.Connect(redisConnectionString));
         services.AddSingleton<ICacheService, RedisCacheService>();
+        services.AddSingleton<ICartService, RedisCartService>();
 
         // RabbitMQ via MassTransit
         services.AddMassTransit(bus =>
