@@ -8,13 +8,16 @@ namespace ECommerce.Application.Products.CreateProduct;
 public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, CreateProductResponse>
 {
     private readonly IProductRepository _productRepository;
+    private readonly ICacheService _cache;
     private readonly ILogger<CreateProductCommandHandler> _logger;
 
     public CreateProductCommandHandler(
         IProductRepository productRepository,
+        ICacheService cache,
         ILogger<CreateProductCommandHandler> logger)
     {
         _productRepository = productRepository;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -31,6 +34,9 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
         };
 
         await _productRepository.CreateAsync(product, cancellationToken);
+
+        // Invalidate product list caches (any query combination could be affected)
+        await _cache.RemoveByPrefixAsync("products:list:", cancellationToken);
 
         _logger.LogInformation("Product created: {Name} ({ProductId})", product.Name, product.Id);
 

@@ -7,13 +7,16 @@ namespace ECommerce.Application.Products.UpdateProduct;
 public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand, bool>
 {
     private readonly IProductRepository _productRepository;
+    private readonly ICacheService _cache;
     private readonly ILogger<UpdateProductCommandHandler> _logger;
 
     public UpdateProductCommandHandler(
         IProductRepository productRepository,
+        ICacheService cache,
         ILogger<UpdateProductCommandHandler> logger)
     {
         _productRepository = productRepository;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -34,7 +37,12 @@ public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand,
         var updated = await _productRepository.UpdateAsync(product, cancellationToken);
 
         if (updated)
+        {
+            // Invalidate this product's cache and all list caches
+            await _cache.RemoveAsync($"products:{request.Id}", cancellationToken);
+            await _cache.RemoveByPrefixAsync("products:list:", cancellationToken);
             _logger.LogInformation("Product updated: {Name} ({ProductId})", product.Name, product.Id);
+        }
 
         return updated;
     }
