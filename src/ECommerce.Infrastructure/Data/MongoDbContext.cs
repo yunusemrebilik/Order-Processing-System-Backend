@@ -22,6 +22,7 @@ public class MongoDbContext
     }
 
     public IMongoCollection<Product> Products => _database.GetCollection<Product>("products");
+    public IMongoCollection<Order> Orders => _database.GetCollection<Order>("orders");
 
     private void ConfigureIndexes()
     {
@@ -39,6 +40,12 @@ public class MongoDbContext
         Products.Indexes.CreateOne(new CreateIndexModel<Product>(
             Builders<Product>.IndexKeys.Ascending(p => p.Category),
             new CreateIndexOptions { Name = "product_category" }
+        ));
+
+        // Index on UserId for order queries
+        Orders.Indexes.CreateOne(new CreateIndexModel<Order>(
+            Builders<Order>.IndexKeys.Ascending(o => o.UserId),
+            new CreateIndexOptions { Name = "order_userId" }
         ));
     }
 }

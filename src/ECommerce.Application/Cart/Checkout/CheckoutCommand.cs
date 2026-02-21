@@ -15,7 +15,7 @@ public record CheckoutCommand : IRequest<CheckoutResponse>
 
 public record CheckoutResponse
 {
-    public Guid OrderId { get; init; }
+    public string OrderId { get; init; } = string.Empty;
     public decimal TotalAmount { get; init; }
     public int ItemCount { get; init; }
     public string Status { get; init; } = string.Empty;

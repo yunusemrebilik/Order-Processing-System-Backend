@@ -7,7 +7,7 @@ namespace ECommerce.Application.Common.Events;
 /// </summary>
 public record OrderCreatedEvent
 {
-    public Guid OrderId { get; init; }
+    public string OrderId { get; init; } = string.Empty;
     public Guid UserId { get; init; }
     public List<OrderCreatedEventItem> Items { get; init; } = [];
     public decimal TotalAmount { get; init; }

@@ -79,7 +79,7 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
             // Step 5: Publish confirmation event (triggers cart clearing in separate consumer)
             await context.Publish(new OrderConfirmedEvent
             {
-                OrderId = order.OrderId.ToString(),
+                OrderId = order.OrderId,
                 UserId = order.UserId.ToString()
             });
 

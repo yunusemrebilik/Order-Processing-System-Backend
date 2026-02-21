@@ -6,7 +6,7 @@ namespace ECommerce.Domain.Events;
 /// </summary>
 public record OrderCreatedEvent
 {
-    public Guid OrderId { get; init; }
+    public string OrderId { get; init; } = string.Empty;
     public Guid UserId { get; init; }
     public List<OrderItemEvent> Items { get; init; } = [];
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;

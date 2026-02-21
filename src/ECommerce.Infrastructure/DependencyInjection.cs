@@ -37,7 +37,7 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
-        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddSingleton<IOrderRepository, MongoOrderRepository>();
         services.AddScoped<IStockRepository, StockRepository>();
 
         // Services
