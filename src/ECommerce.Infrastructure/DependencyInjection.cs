@@ -1,5 +1,6 @@
 using System.Text;
 using ECommerce.Application.Common.Interfaces;
+using ECommerce.Application.Common.Settings;
 using ECommerce.Infrastructure.Data;
 using ECommerce.Infrastructure.Repositories;
 using ECommerce.Infrastructure.Services;
@@ -48,15 +49,22 @@ public static class DependencyInjection
             configuration.GetSection(MongoDbSettings.SectionName));
         services.AddSingleton<MongoDbContext>();
 
+        // Cache
+        services.Configure<CacheSettings>(
+            configuration.GetSection(CacheSettings.SectionName));
+
         // Redis Distributed Cache
-        var redisConnectionString = configuration.GetConnectionString("Redis")!;
+        services.Configure<RedisSettings>(
+            configuration.GetSection(RedisSettings.SectionName));
+
+        var redisSettings = configuration.GetSection(RedisSettings.SectionName).Get<RedisSettings>()!;
         services.AddStackExchangeRedisCache(options =>
         {
-            options.Configuration = redisConnectionString;
-            options.InstanceName = "ECommerce:";
+            options.Configuration = redisSettings.ConnectionString;
+            options.InstanceName = redisSettings.InstanceName;
         });
         services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect(redisConnectionString));
+            ConnectionMultiplexer.Connect(redisSettings.ConnectionString));
         services.AddSingleton<ICacheService, RedisCacheService>();
         services.AddSingleton<ICartService, RedisCartService>();
 

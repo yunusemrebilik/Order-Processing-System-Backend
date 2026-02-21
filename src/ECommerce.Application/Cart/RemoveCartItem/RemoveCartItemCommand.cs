@@ -3,13 +3,13 @@ using MediatR;
 
 namespace ECommerce.Application.Cart.RemoveCartItem;
 
-public record RemoveCartItemCommand : IRequest<ShoppingCart>
+public record RemoveCartItemCommand : IRequest
 {
     public string UserId { get; init; } = string.Empty;
     public string ProductId { get; init; } = string.Empty;
 }
 
-public class RemoveCartItemCommandHandler : IRequestHandler<RemoveCartItemCommand, ShoppingCart>
+public class RemoveCartItemCommandHandler : IRequestHandler<RemoveCartItemCommand>
 {
     private readonly ICartService _cartService;
 
@@ -18,8 +18,8 @@ public class RemoveCartItemCommandHandler : IRequestHandler<RemoveCartItemComman
         _cartService = cartService;
     }
 
-    public async Task<ShoppingCart> Handle(RemoveCartItemCommand request, CancellationToken cancellationToken)
+    public async Task Handle(RemoveCartItemCommand request, CancellationToken cancellationToken)
     {
-        return await _cartService.RemoveItemAsync(request.UserId, request.ProductId, cancellationToken);
+        await _cartService.RemoveItemAsync(request.UserId, request.ProductId, cancellationToken);
     }
 }

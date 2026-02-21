@@ -13,7 +13,11 @@ builder.Services.AddSerilog();
 // Skip web-specific services (JWT, Auth, Health Checks)
 builder.Services.AddInfrastructure(
     builder.Configuration,
-    configureBus: bus => bus.AddConsumer<OrderCreatedConsumer>(),
+    configureBus: bus =>
+    {
+        bus.AddConsumer<OrderCreatedConsumer>();
+        bus.AddConsumer<OrderConfirmedConsumer>();
+    },
     includeWebAuth: false);
 
 var host = builder.Build();

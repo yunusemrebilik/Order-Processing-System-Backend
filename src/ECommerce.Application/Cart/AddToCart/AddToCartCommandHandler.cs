@@ -3,7 +3,7 @@ using MediatR;
 
 namespace ECommerce.Application.Cart.AddToCart;
 
-public class AddToCartCommandHandler : IRequestHandler<AddToCartCommand, ShoppingCart>
+public class AddToCartCommandHandler : IRequestHandler<AddToCartCommand>
 {
     private readonly ICartService _cartService;
     private readonly IProductRepository _productRepository;
@@ -14,21 +14,13 @@ public class AddToCartCommandHandler : IRequestHandler<AddToCartCommand, Shoppin
         _productRepository = productRepository;
     }
 
-    public async Task<ShoppingCart> Handle(AddToCartCommand request, CancellationToken cancellationToken)
+    public async Task Handle(AddToCartCommand request, CancellationToken cancellationToken)
     {
         // Validate product exists and is active
         var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
         if (product is null || !product.IsActive)
             throw new KeyNotFoundException($"Product '{request.ProductId}' not found or inactive");
 
-        var cartItem = new CartItem
-        {
-            ProductId = product.Id,
-            ProductName = product.Name,
-            UnitPrice = product.Price,
-            Quantity = request.Quantity
-        };
-
-        return await _cartService.AddItemAsync(request.UserId, cartItem, cancellationToken);
+        await _cartService.AddOrUpdateItemAsync(request.UserId, request.ProductId, request.Quantity, cancellationToken);
     }
 }

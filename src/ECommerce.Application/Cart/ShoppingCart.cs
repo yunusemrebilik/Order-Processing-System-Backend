@@ -8,15 +8,7 @@ public record ShoppingCart
 {
     public string UserId { get; init; } = string.Empty;
     public List<CartItem> Items { get; init; } = [];
-    public decimal TotalAmount => Items.Sum(i => i.TotalPrice);
     public DateTime UpdatedAt { get; init; } = DateTime.UtcNow;
 }
 
-public record CartItem
-{
-    public string ProductId { get; init; } = string.Empty;
-    public string ProductName { get; init; } = string.Empty;
-    public decimal UnitPrice { get; init; }
-    public int Quantity { get; init; }
-    public decimal TotalPrice => UnitPrice * Quantity;
-}
+public record CartItem(string ProductId, int Quantity);

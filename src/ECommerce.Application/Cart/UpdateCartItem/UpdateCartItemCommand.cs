@@ -3,14 +3,14 @@ using MediatR;
 
 namespace ECommerce.Application.Cart.UpdateCartItem;
 
-public record UpdateCartItemCommand : IRequest<ShoppingCart>
+public record UpdateCartItemCommand : IRequest
 {
     public string UserId { get; init; } = string.Empty;
     public string ProductId { get; init; } = string.Empty;
     public int Quantity { get; init; }
 }
 
-public class UpdateCartItemCommandHandler : IRequestHandler<UpdateCartItemCommand, ShoppingCart>
+public class UpdateCartItemCommandHandler : IRequestHandler<UpdateCartItemCommand>
 {
     private readonly ICartService _cartService;
 
@@ -19,9 +19,9 @@ public class UpdateCartItemCommandHandler : IRequestHandler<UpdateCartItemComman
         _cartService = cartService;
     }
 
-    public async Task<ShoppingCart> Handle(UpdateCartItemCommand request, CancellationToken cancellationToken)
+    public async Task Handle(UpdateCartItemCommand request, CancellationToken cancellationToken)
     {
-        return await _cartService.UpdateItemQuantityAsync(
+        await _cartService.AddOrUpdateItemAsync(
             request.UserId, request.ProductId, request.Quantity, cancellationToken);
     }
 }

@@ -1,5 +1,7 @@
 using ECommerce.Application.Common.Interfaces;
+using ECommerce.Application.Common.Settings;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace ECommerce.Application.Products.GetProducts;
 
@@ -7,11 +9,13 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, GetProd
 {
     private readonly IProductRepository _productRepository;
     private readonly ICacheService _cache;
+    private readonly CacheSettings _cacheSettings;
 
-    public GetProductsQueryHandler(IProductRepository productRepository, ICacheService cache)
+    public GetProductsQueryHandler(IProductRepository productRepository, ICacheService cache, IOptions<CacheSettings> cacheSettings)
     {
         _productRepository = productRepository;
         _cache = cache;
+        _cacheSettings = cacheSettings.Value;
     }
 
     public async Task<GetProductsResponse> Handle(GetProductsQuery request, CancellationToken cancellationToken)
@@ -50,8 +54,7 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, GetProd
             PageSize = request.PageSize
         };
 
-        // Store in cache (5 min TTL)
-        await _cache.SetAsync(cacheKey, response, TimeSpan.FromMinutes(5), cancellationToken);
+        await _cache.SetAsync(cacheKey, response, TimeSpan.FromDays(_cacheSettings.ProductTtlInDays), cancellationToken);
 
         return response;
     }

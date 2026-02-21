@@ -1,5 +1,7 @@
 using ECommerce.Application.Common.Interfaces;
+using ECommerce.Application.Common.Settings;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace ECommerce.Application.Products.GetProductById;
 
@@ -7,11 +9,13 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, G
 {
     private readonly IProductRepository _productRepository;
     private readonly ICacheService _cache;
+    private readonly CacheSettings _cacheSettings;
 
-    public GetProductByIdQueryHandler(IProductRepository productRepository, ICacheService cache)
+    public GetProductByIdQueryHandler(IProductRepository productRepository, ICacheService cache, IOptions<CacheSettings> cacheSettings)
     {
         _productRepository = productRepository;
         _cache = cache;
+        _cacheSettings = cacheSettings.Value;
     }
 
     public async Task<GetProductByIdResponse?> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
@@ -43,8 +47,7 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, G
             UpdatedAt = product.UpdatedAt
         };
 
-        // Store in cache (5 min TTL)
-        await _cache.SetAsync(cacheKey, response, TimeSpan.FromMinutes(5), cancellationToken);
+        await _cache.SetAsync(cacheKey, response, TimeSpan.FromDays(_cacheSettings.ProductTtlInDays), cancellationToken);
 
         return response;
     }

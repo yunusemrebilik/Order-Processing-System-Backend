@@ -16,6 +16,6 @@ public class GetCartQueryHandler : IRequestHandler<GetCartQuery, ShoppingCart>
 
     public async Task<ShoppingCart> Handle(GetCartQuery request, CancellationToken cancellationToken)
     {
-        return await _cartService.GetCartAsync(request.UserId, cancellationToken);
+        return await _cartService.GetCartItemsAsync(request.UserId, cancellationToken);
     }
 }

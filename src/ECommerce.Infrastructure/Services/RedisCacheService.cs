@@ -1,7 +1,9 @@
 using System.Text.Json;
 using ECommerce.Application.Common.Interfaces;
+using ECommerce.Infrastructure.Settings;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace ECommerce.Infrastructure.Services;
@@ -15,6 +17,7 @@ public class RedisCacheService : ICacheService
     private readonly IDistributedCache _cache;
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisCacheService> _logger;
+    private readonly RedisSettings _redisSettings;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -25,11 +28,13 @@ public class RedisCacheService : ICacheService
     public RedisCacheService(
         IDistributedCache cache,
         IConnectionMultiplexer redis,
-        ILogger<RedisCacheService> logger)
+        ILogger<RedisCacheService> logger,
+        IOptions<RedisSettings> redisSettings)
     {
         _cache = cache;
         _redis = redis;
         _logger = logger;
+        _redisSettings = redisSettings.Value;
     }
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
@@ -87,7 +92,7 @@ public class RedisCacheService : ICacheService
         try
         {
             var server = _redis.GetServer(_redis.GetEndPoints().First());
-            var keys = server.Keys(pattern: $"ECommerce:{prefix}*").ToArray();
+            var keys = server.Keys(pattern: $"{_redisSettings.InstanceName}{prefix}*").ToArray();
 
             if (keys.Length == 0)
                 return;

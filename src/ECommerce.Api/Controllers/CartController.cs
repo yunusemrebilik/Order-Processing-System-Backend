@@ -51,8 +51,8 @@ public class CartController : ControllerBase
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var cart = await _mediator.Send(commandWithUser);
-        return Ok(cart);
+        await _mediator.Send(commandWithUser);
+        return NoContent();
     }
 
     /// <summary>
@@ -68,8 +68,8 @@ public class CartController : ControllerBase
             Quantity = request.Quantity
         };
 
-        var cart = await _mediator.Send(command);
-        return Ok(cart);
+        await _mediator.Send(command);
+        return NoContent();
     }
 
     /// <summary>
@@ -84,8 +84,8 @@ public class CartController : ControllerBase
             ProductId = productId
         };
 
-        var cart = await _mediator.Send(command);
-        return Ok(cart);
+        await _mediator.Send(command);
+        return NoContent();
     }
 
     /// <summary>

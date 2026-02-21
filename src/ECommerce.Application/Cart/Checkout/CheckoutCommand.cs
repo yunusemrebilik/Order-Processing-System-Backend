@@ -24,17 +24,20 @@ public record CheckoutResponse
 public class CheckoutCommandHandler : IRequestHandler<CheckoutCommand, CheckoutResponse>
 {
     private readonly ICartService _cartService;
+    private readonly IProductRepository _productRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<CheckoutCommandHandler> _logger;
 
     public CheckoutCommandHandler(
         ICartService cartService,
+        IProductRepository productRepository,
         IOrderRepository orderRepository,
         IEventPublisher eventPublisher,
         ILogger<CheckoutCommandHandler> logger)
     {
         _cartService = cartService;
+        _productRepository = productRepository;
         _orderRepository = orderRepository;
         _eventPublisher = eventPublisher;
         _logger = logger;
@@ -42,33 +45,48 @@ public class CheckoutCommandHandler : IRequestHandler<CheckoutCommand, CheckoutR
 
     public async Task<CheckoutResponse> Handle(CheckoutCommand request, CancellationToken cancellationToken)
     {
-        var cart = await _cartService.GetCartAsync(request.UserId, cancellationToken);
+        // 1. Get cart items (productId → quantity) from Redis
+        var cartItems = await _cartService.GetCartItemsAsync(request.UserId, cancellationToken);
 
-        if (cart.Items.Count == 0)
+        if (cartItems.Items.Any() is false)
             throw new InvalidOperationException("Cannot checkout an empty cart");
 
-        // Create order from cart
+        // 2. Fetch current product data from MongoDB for each item
+        //    This ensures we use the CURRENT price, not a stale cached one.
+        var orderItems = new List<OrderItem>();
+        foreach (var (productId, quantity) in cartItems.Items)
+        {
+            var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
+
+            if (product is null || !product.IsActive)
+                throw new InvalidOperationException($"Product '{productId}' is no longer available");
+
+            orderItems.Add(new OrderItem
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                Quantity = quantity,
+                UnitPrice = product.Price
+            });
+        }
+
+        // 3. Create order with fresh prices
+        var totalAmount = orderItems.Sum(i => i.UnitPrice * i.Quantity);
+
         var order = new Order
         {
             UserId = Guid.Parse(request.UserId),
-            TotalAmount = cart.TotalAmount,
+            TotalAmount = totalAmount,
             ShippingAddress = request.ShippingAddress,
             Notes = request.Notes,
-            Items = cart.Items.Select(item => new OrderItem
-            {
-                ProductId = item.ProductId,
-                ProductName = item.ProductName,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice
-            }).ToList()
+            Items = orderItems
         };
 
         await _orderRepository.CreateAsync(order, cancellationToken);
 
-        // Clear the cart after successful order creation
-        await _cartService.ClearCartAsync(request.UserId, cancellationToken);
-
-        // Publish OrderCreated event for async processing (stock validation)
+        // 4. Publish OrderCreated event for async processing (stock validation)
+        // Cart is NOT cleared here — it stays intact until the Worker confirms stock
+        // and publishes OrderConfirmedEvent, which triggers cart clearing.
         await _eventPublisher.PublishAsync(new OrderCreatedEvent
         {
             OrderId = order.Id,

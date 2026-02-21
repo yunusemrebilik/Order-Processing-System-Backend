@@ -76,6 +76,13 @@ public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
             // Step 4: Confirm the order
             await _orderRepository.UpdateStatusAsync(order.OrderId, OrderStatus.Confirmed);
 
+            // Step 5: Publish confirmation event (triggers cart clearing in separate consumer)
+            await context.Publish(new OrderConfirmedEvent
+            {
+                OrderId = order.OrderId.ToString(),
+                UserId = order.UserId.ToString()
+            });
+
             _logger.LogInformation(
                 "Order {OrderId} confirmed — stock deducted for {ItemCount} items, total: {Total}",
                 order.OrderId, order.Items.Count, order.TotalAmount);
