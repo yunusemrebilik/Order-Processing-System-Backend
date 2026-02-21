@@ -25,6 +25,17 @@ public class ProductRepository : IProductRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<List<Product>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
+    {
+        var validIds = ids.Where(id => ObjectId.TryParse(id, out _)).ToList();
+
+        if (validIds.Count == 0)
+            return [];
+
+        var filter = Builders<Product>.Filter.In(p => p.Id, validIds);
+        return await _context.Products.Find(filter).ToListAsync(cancellationToken);
+    }
+
     public async Task<(List<Product> Items, long TotalCount)> GetAllAsync(
         string? category = null,
         string? search = null,

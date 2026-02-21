@@ -51,14 +51,17 @@ public class CheckoutCommandHandler : IRequestHandler<CheckoutCommand, CheckoutR
         if (cartItems.Items.Any() is false)
             throw new InvalidOperationException("Cannot checkout an empty cart");
 
-        // 2. Fetch current product data from MongoDB for each item
+        // 2. Batch-fetch current product data from MongoDB (single $in query)
         //    This ensures we use the CURRENT price, not a stale cached one.
+        var productIds = cartItems.Items.Select(i => i.ProductId).ToList();
+        var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
+        var productMap = products.ToDictionary(p => p.Id);
+
+        // 3. Validate all products and build order items
         var orderItems = new List<OrderItem>();
         foreach (var (productId, quantity) in cartItems.Items)
         {
-            var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
-
-            if (product is null || !product.IsActive)
+            if (!productMap.TryGetValue(productId, out var product) || !product.IsActive)
                 throw new InvalidOperationException($"Product '{productId}' is no longer available");
 
             orderItems.Add(new OrderItem

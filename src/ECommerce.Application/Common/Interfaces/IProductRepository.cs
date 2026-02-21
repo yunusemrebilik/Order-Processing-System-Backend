@@ -5,6 +5,7 @@ namespace ECommerce.Application.Common.Interfaces;
 public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
+    Task<List<Product>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default);
     Task<(List<Product> Items, long TotalCount)> GetAllAsync(
         string? category = null,
         string? search = null,
