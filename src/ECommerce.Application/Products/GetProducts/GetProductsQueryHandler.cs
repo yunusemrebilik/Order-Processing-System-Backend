@@ -20,42 +20,89 @@ public class GetProductsQueryHandler : IRequestHandler<GetProductsQuery, GetProd
 
     public async Task<GetProductsResponse> Handle(GetProductsQuery request, CancellationToken cancellationToken)
     {
-        // Build cache key from query parameters
         var cacheKey = $"products:list:{request.Category ?? "all"}:{request.Search ?? "none"}:p{request.Page}:s{request.PageSize}";
 
-        // Cache-Aside: check cache first
-        var cached = await _cache.GetAsync<GetProductsResponse>(cacheKey, cancellationToken);
-        if (cached is not null)
-            return cached;
+        var response = await _cache.GetAsync<GetProductsResponse>(cacheKey, cancellationToken);
+        var fetchFromDb = false;
+        List<ECommerce.Domain.Entities.Product> dbItems = new();
 
-        // Cache miss: fetch from MongoDB
-        var (items, totalCount) = await _productRepository.GetAllAsync(
-            request.Category,
-            request.Search,
-            request.Page,
-            request.PageSize,
-            cancellationToken);
-
-        var response = new GetProductsResponse
+        if (response is null)
         {
-            Items = items.Select(p => new ProductDto
+            fetchFromDb = true;
+            long totalCount;
+            (dbItems, totalCount) = await _productRepository.GetAllAsync(
+                request.Category,
+                request.Search,
+                request.Page,
+                request.PageSize,
+                cancellationToken);
+
+            response = new GetProductsResponse
             {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Category = p.Category,
-                Price = p.Price,
-                ImageUrl = p.ImageUrl,
-                Attributes = p.Attributes,
-                CreatedAt = p.CreatedAt
-            }).ToList(),
-            TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+                Items = dbItems.Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Category = p.Category,
+                    Price = 0, // don't cache price in list
+                    ImageUrl = p.ImageUrl,
+                    Attributes = p.Attributes,
+                    CreatedAt = p.CreatedAt
+                }).ToList(),
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
 
-        await _cache.SetAsync(cacheKey, response, TimeSpan.FromDays(_cacheSettings.ProductTtlInDays), cancellationToken);
+            await _cache.SetAsync(cacheKey, response, TimeSpan.FromDays(_cacheSettings.ProductTtlInDays), cancellationToken);
+        }
 
-        return response;
+        var prices = new Dictionary<string, decimal>();
+        var missingPriceIds = new List<string>();
+
+        if (fetchFromDb)
+        {
+            foreach (var item in dbItems)
+            {
+                prices[item.Id] = item.Price;
+                var priceCacheKey = $"products:price:{item.Id}";
+                await _cache.SetAsync(priceCacheKey, item.Price, TimeSpan.FromMinutes(_cacheSettings.ProductPriceTtlInMinutes), cancellationToken);
+            }
+        }
+        else
+        {
+            foreach (var item in response.Items)
+            {
+                var priceCacheKey = $"products:price:{item.Id}";
+                var cachedPrice = await _cache.GetAsync<decimal?>(priceCacheKey, cancellationToken);
+                
+                if (cachedPrice.HasValue)
+                {
+                    prices[item.Id] = cachedPrice.Value;
+                }
+                else
+                {
+                    missingPriceIds.Add(item.Id);
+                }
+            }
+
+            if (missingPriceIds.Any())
+            {
+                var missingProducts = await _productRepository.GetByIdsAsync(missingPriceIds, cancellationToken);
+                foreach (var p in missingProducts)
+                {
+                    prices[p.Id] = p.Price;
+                    var priceCacheKey = $"products:price:{p.Id}";
+                    await _cache.SetAsync(priceCacheKey, p.Price, TimeSpan.FromMinutes(_cacheSettings.ProductPriceTtlInMinutes), cancellationToken);
+                }
+            }
+        }
+
+        // Rebuild items with prices
+        var updatedItems = response.Items.Select(item => 
+            prices.TryGetValue(item.Id, out var price) ? item with { Price = price } : item).ToList();
+
+        return response with { Items = updatedItems };
     }
 }

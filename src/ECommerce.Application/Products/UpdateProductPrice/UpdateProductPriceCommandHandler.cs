@@ -2,47 +2,44 @@ using ECommerce.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
-namespace ECommerce.Application.Products.UpdateProduct;
+namespace ECommerce.Application.Products.UpdateProductPrice;
 
-public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand, bool>
+public class UpdateProductPriceCommandHandler : IRequestHandler<UpdateProductPriceCommand, bool>
 {
     private readonly IProductRepository _productRepository;
     private readonly ICacheService _cache;
-    private readonly ILogger<UpdateProductCommandHandler> _logger;
+    private readonly ILogger<UpdateProductPriceCommandHandler> _logger;
 
-    public UpdateProductCommandHandler(
+    public UpdateProductPriceCommandHandler(
         IProductRepository productRepository,
         ICacheService cache,
-        ILogger<UpdateProductCommandHandler> logger)
+        ILogger<UpdateProductPriceCommandHandler> logger)
     {
         _productRepository = productRepository;
         _cache = cache;
         _logger = logger;
     }
 
-    public async Task<bool> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(UpdateProductPriceCommand request, CancellationToken cancellationToken)
     {
         var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
         if (product is null)
+        {
             throw new KeyNotFoundException($"Product with ID '{request.Id}' not found");
+        }
 
-        product.Name = request.Name;
-        product.Description = request.Description;
-        product.Category = request.Category;
         product.Price = request.Price;
-        product.ImageUrl = request.ImageUrl;
-        product.IsActive = request.IsActive;
-        product.Attributes = request.Attributes;
 
         var updated = await _productRepository.UpdateAsync(product, cancellationToken);
 
         if (updated)
         {
-            // Invalidate this product's cache and all list caches
-            await _cache.RemoveAsync($"products:info:{request.Id}", cancellationToken);
+            // IMPORTANT: ONLY invalidate the price cache, leave the info cache intact!
+            // Also invalidate lists, since list endpoints deliver products merged with their potentially old prices.
             await _cache.RemoveAsync($"products:price:{request.Id}", cancellationToken);
             await _cache.RemoveByPrefixAsync("products:list:", cancellationToken);
-            _logger.LogInformation("Product updated: {Name} ({ProductId})", product.Name, product.Id);
+            
+            _logger.LogInformation("Product price updated: {Name} ({ProductId}) to {Price}", product.Name, product.Id, product.Price);
         }
 
         return updated;

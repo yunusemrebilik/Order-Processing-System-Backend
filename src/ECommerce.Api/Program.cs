@@ -79,6 +79,11 @@ if (app.Environment.IsDevelopment())
 
     var stockRepo = scope.ServiceProvider.GetRequiredService<ECommerce.Application.Common.Interfaces.IStockRepository>();
     await ECommerce.Infrastructure.Data.StockSeeder.SeedAsync(productRepo, stockRepo);
+    
+    var userRepo = scope.ServiceProvider.GetRequiredService<ECommerce.Application.Common.Interfaces.IUserRepository>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<ECommerce.Application.Common.Interfaces.IPasswordHasher>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await ECommerce.Infrastructure.Data.UserSeeder.SeedAsync(userRepo, passwordHasher, logger);
 }
 
 app.Run();

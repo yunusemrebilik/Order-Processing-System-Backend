@@ -1,0 +1,34 @@
+Using launch settings from src/ECommerce.Worker/Properties/launchSettings.json...
+[09:30:40 INF] Configured endpoint order-created, Consumer: ECommerce.Worker.Consumers.OrderCreatedConsumer
+[09:30:40 INF] Configured endpoint order-confirmed, Consumer: ECommerce.Worker.Consumers.OrderConfirmedConsumer
+[09:30:40 INF] Application started. Press Ctrl+C to shut down.
+[09:30:40 INF] Hosting environment: Development
+[09:30:40 INF] Content root path: /home/yunusemre/Documents/Projects/ecommerce-backend/src/ECommerce.Worker
+[09:30:41 INF] Bus started: rabbitmq://localhost/
+[09:31:24 INF] Processing order 699aa2bbfe6dfea1f18ef51a with 2 items
+[09:31:25 INF] Executed DbCommand (96ms) [Parameters=[@__ids_0='?' (DbType = Object)], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."CreatedAt", s."ProductId", s."Quantity", s."ReservedQuantity", s."UpdatedAt"
+FROM "StockItems" AS s
+WHERE s."ProductId" = ANY (@__ids_0)
+[09:31:25 INF] Executed DbCommand (18ms) [Parameters=[@__quantity_1='?' (DbType = Int32), @__productId_0='?'], CommandType='Text', CommandTimeout='30']
+UPDATE "StockItems" AS s
+SET "ReservedQuantity" = s."ReservedQuantity" + @__quantity_1
+WHERE s."ProductId" = @__productId_0
+[09:31:25 INF] Executed DbCommand (2ms) [Parameters=[@__quantity_1='?' (DbType = Int32), @__productId_0='?'], CommandType='Text', CommandTimeout='30']
+UPDATE "StockItems" AS s
+SET "ReservedQuantity" = s."ReservedQuantity" + @__quantity_1
+WHERE s."ProductId" = @__productId_0
+[09:31:25 INF] Stock reserved for order 699aa2bbfe6dfea1f18ef51a
+[09:31:25 INF] Executed DbCommand (2ms) [Parameters=[@__quantity_1='?' (DbType = Int32), @__productId_0='?'], CommandType='Text', CommandTimeout='30']
+UPDATE "StockItems" AS s
+SET "ReservedQuantity" = s."ReservedQuantity" - @__quantity_1,
+    "Quantity" = s."Quantity" - @__quantity_1
+WHERE s."ProductId" = @__productId_0
+[09:31:25 INF] Executed DbCommand (2ms) [Parameters=[@__quantity_1='?' (DbType = Int32), @__productId_0='?'], CommandType='Text', CommandTimeout='30']
+UPDATE "StockItems" AS s
+SET "ReservedQuantity" = s."ReservedQuantity" - @__quantity_1,
+    "Quantity" = s."Quantity" - @__quantity_1
+WHERE s."ProductId" = @__productId_0
+[09:31:25 INF] Order 699aa2bbfe6dfea1f18ef51a confirmed — stock deducted for 2 items, total: 4299.95
+[09:31:25 INF] Cart cleared for user 2152964d-c898-40a4-baea-cb5421a08849 after order 699aa2bbfe6dfea1f18ef51a confirmed
+[09:35:41 INF] Usage Telemetry: {"id":"f92c0000-28d6-1e9d-6f5d-08de71dbe617","created":"2026-02-22T09:30:40.5262632\u002B03:00","host":{"framework_version":"9.0.12","mass_transit_version":"8.4.0.0","operating_system_version":"Unix 6.18.10.200","time_zone_info":"(UTC\u002B03:00) T\u00FCrkiye Time","commit_hash":"c0977e09482f7f5e3585c9a59e67941a89fd2963"},"bus":[{"created":"2026-02-22T09:30:40.5409047\u002B03:00","configured":"2026-02-22T09:30:40.7794687\u002B03:00","started":"2026-02-22T09:30:41.0593182\u002B03:00","name":"IBus","endpoints":[{"name":"order-created","type":"RabbitMQ","prefetch_count":24,"consumer_count":1,"message_count":1},{"name":"order-confirmed","type":"RabbitMQ","prefetch_count":24,"consumer_count":1,"message_count":1},{"name":"_bus_","type":"RabbitMQ","prefetch_count":24}]}]}

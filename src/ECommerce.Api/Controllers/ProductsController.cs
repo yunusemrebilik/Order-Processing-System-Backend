@@ -3,6 +3,7 @@ using ECommerce.Application.Products.DeleteProduct;
 using ECommerce.Application.Products.GetProductById;
 using ECommerce.Application.Products.GetProducts;
 using ECommerce.Application.Products.UpdateProduct;
+using ECommerce.Application.Products.UpdateProductPrice;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -85,6 +86,26 @@ public class ProductsController : ControllerBase
         [FromServices] IValidator<UpdateProductCommand> validator)
     {
         // Ensure the ID in the route matches the command
+        var commandWithId = command with { Id = id };
+
+        var validationResult = await validator.ValidateAsync(commandWithId);
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+
+        await _mediator.Send(commandWithId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Update only the price of an existing product. Requires Admin role.
+    /// </summary>
+    [HttpPatch("{id}/price")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> UpdateProductPrice(
+        string id,
+        [FromBody] UpdateProductPriceCommand command,
+        [FromServices] IValidator<UpdateProductPriceCommand> validator)
+    {
         var commandWithId = command with { Id = id };
 
         var validationResult = await validator.ValidateAsync(commandWithId);

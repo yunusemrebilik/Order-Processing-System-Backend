@@ -31,7 +31,8 @@ public class DeleteProductCommandHandler : IRequestHandler<DeleteProductCommand,
         if (deleted)
         {
             // Invalidate this product's cache and all list caches
-            await _cache.RemoveAsync($"products:{request.Id}", cancellationToken);
+            await _cache.RemoveAsync($"products:info:{request.Id}", cancellationToken);
+            await _cache.RemoveAsync($"products:price:{request.Id}", cancellationToken);
             await _cache.RemoveByPrefixAsync("products:list:", cancellationToken);
             _logger.LogInformation("Product soft-deleted: {Name} ({ProductId})", product.Name, product.Id);
         }

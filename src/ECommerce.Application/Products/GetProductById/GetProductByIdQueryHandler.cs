@@ -20,34 +20,60 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, G
 
     public async Task<GetProductByIdResponse?> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
     {
-        var cacheKey = $"products:{request.Id}";
+        var infoCacheKey = $"products:info:{request.Id}";
+        var priceCacheKey = $"products:price:{request.Id}";
 
-        // Cache-Aside: check cache first
-        var cached = await _cache.GetAsync<GetProductByIdResponse>(cacheKey, cancellationToken);
-        if (cached is not null)
-            return cached;
+        // 1. Try to get base info and price from cache
+        var cachedInfo = await _cache.GetAsync<GetProductByIdResponse>(infoCacheKey, cancellationToken);
+        var cachedPrice = await _cache.GetAsync<decimal?>(priceCacheKey, cancellationToken);
 
-        // Cache miss: fetch from MongoDB
-        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
+        GetProductByIdResponse? response = cachedInfo;
 
-        if (product is null)
-            return null;
-
-        var response = new GetProductByIdResponse
+        // 2. If base info is missing, fetch from database
+        if (response is null)
         {
-            Id = product.Id,
-            Name = product.Name,
-            Description = product.Description,
-            Category = product.Category,
-            Price = product.Price,
-            ImageUrl = product.ImageUrl,
-            IsActive = product.IsActive,
-            Attributes = product.Attributes,
-            CreatedAt = product.CreatedAt,
-            UpdatedAt = product.UpdatedAt
-        };
+            var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
+            if (product is null)
+                return null;
 
-        await _cache.SetAsync(cacheKey, response, TimeSpan.FromDays(_cacheSettings.ProductTtlInDays), cancellationToken);
+            response = new GetProductByIdResponse
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Category = product.Category,
+                Price = product.Price, // We will override this if we have a better price below or need to store it
+                ImageUrl = product.ImageUrl,
+                IsActive = product.IsActive,
+                Attributes = product.Attributes,
+                CreatedAt = product.CreatedAt,
+                UpdatedAt = product.UpdatedAt
+            };
+
+            // Don't cache price inside the info object to prevent staleness 
+            var infoToCache = response with { Price = 0 };
+            await _cache.SetAsync(infoCacheKey, infoToCache, TimeSpan.FromDays(_cacheSettings.ProductTtlInDays), cancellationToken);
+            
+            // If price was also missing, cache it now since we just fetched it
+            if (cachedPrice is null)
+            {
+                cachedPrice = product.Price;
+                await _cache.SetAsync(priceCacheKey, cachedPrice.Value, TimeSpan.FromMinutes(_cacheSettings.ProductPriceTtlInMinutes), cancellationToken);
+            }
+        }
+        else if (cachedPrice is null)
+        {
+            // Info hit, price miss (TTL expired) -> fetch from DB to get fresh price
+            var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
+            if (product is null)
+                return null; // Product deleted?
+                
+            cachedPrice = product.Price;
+            await _cache.SetAsync(priceCacheKey, cachedPrice.Value, TimeSpan.FromMinutes(_cacheSettings.ProductPriceTtlInMinutes), cancellationToken);
+        }
+
+        // 3. Merge price into the response
+        response = response with { Price = cachedPrice.Value };
 
         return response;
     }

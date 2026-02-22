@@ -1,0 +1,18 @@
+Using launch settings from src/ECommerce.Api/Properties/launchSettings.json...
+[09:30:46 INF] Now listening on: http://localhost:5116
+[09:30:46 INF] Application started. Press Ctrl+C to shut down.
+[09:30:46 INF] Hosting environment: Development
+[09:30:46 INF] Content root path: /home/yunusemre/Documents/Projects/ecommerce-backend/src/ECommerce.Api
+[09:30:46 INF] Bus started: rabbitmq://localhost/
+[09:31:22 WRN] You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+[09:31:23 INF] User logged in: test@test.com (2152964d-c898-40a4-baea-cb5421a08849)
+[09:31:23 INF] HTTP POST /api/auth/login responded 200 in 1041.3224 ms
+[09:31:23 INF] Cart updated: User 2152964d-c898-40a4-baea-cb5421a08849, Product 6996ccf7487918c39abca258, New Qty: 3
+[09:31:23 INF] HTTP POST /api/cart/items responded 204 in 209.0462 ms
+[09:31:23 INF] Cart updated: User 2152964d-c898-40a4-baea-cb5421a08849, Product 6996ccf7487918c39abca25a, New Qty: 2
+[09:31:23 INF] HTTP POST /api/cart/items responded 204 in 9.7454 ms
+[09:31:23 INF] HTTP GET /api/cart responded 200 in 38.9001 ms
+[09:31:24 INF] Order created and event published: 699aa2bbfe6dfea1f18ef51a, 2 items, total: 4299.95
+[09:31:24 INF] HTTP POST /api/cart/checkout responded 201 in 268.1053 ms
+[09:31:29 INF] HTTP GET /api/cart responded 200 in 2.4485 ms
+[09:35:46 INF] Usage Telemetry: {"id":"d32d0000-28d6-1e9d-55e3-08de71dbe8c5","created":"2026-02-22T09:30:45.0213291\u002B03:00","host":{"framework_version":"9.0.12","mass_transit_version":"8.4.0.0","operating_system_version":"Unix 6.18.10.200","time_zone_info":"(UTC\u002B03:00) T\u00FCrkiye Time","commit_hash":"c0977e09482f7f5e3585c9a59e67941a89fd2963"},"bus":[{"created":"2026-02-22T09:30:45.0339175\u002B03:00","configured":"2026-02-22T09:30:45.0897286\u002B03:00","started":"2026-02-22T09:30:46.7397302\u002B03:00","name":"IBus","endpoints":[{"name":"_bus_","type":"RabbitMQ","prefetch_count":24}]}]}
