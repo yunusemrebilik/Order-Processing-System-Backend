@@ -1,6 +1,7 @@
 using ECommerce.Api.Middleware;
 using ECommerce.Application;
 using ECommerce.Infrastructure;
+using ECommerce.Api.Settings;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,9 @@ builder.Host.UseSerilog((context, loggerConfig) =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
+
+// ── Rate Limiting ─────────────────────────────────────────────────────────
+builder.Services.Configure<RateLimitSettings>(builder.Configuration.GetSection(RateLimitSettings.SectionName));
 
 // ── Swagger ──────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
@@ -58,6 +62,7 @@ var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseSerilogRequestLogging();
+app.UseMiddleware<RedisRateLimitingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
